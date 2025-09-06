@@ -8,16 +8,34 @@ const waitOn = require('wait-on');
 const fs = require('fs'); // ✅ make sure fs is imported here
 const { PrismaClient } = require('@prisma/client');
 const ElectronStore = require('electron-store').default;
+const serve = require("electron-serve").default;
+
+// Make sure to resolve the absolute path to 'out' directory
+const loadURL = serve({ directory: path.join(__dirname, "../out") });
+
+
+
+
+// Get a writable path for the database
+const userDataPath = app.getPath("userData"); // e.g., C:\Users\<user>\AppData\Roaming\<YourApp>
+const databasePath = path.join(userDataPath, "dev.db");
+
+// If you have a default dev.db, copy it to userData folder if it doesn't exist
+const defaultDbPath = path.join(__dirname, "../prisma/dev.db");
+if (!fs.existsSync(databasePath)) {
+  fs.copyFileSync(defaultDbPath, databasePath);
+}
+
+// Override DATABASE_URL for Prisma
+process.env.DATABASE_URL = `file:${databasePath}`;
 
 const prisma = new PrismaClient();
-
-
-
 // data persitant
 const store = new ElectronStore(); // Initialize electron-store
 
 // --- escpos import ---
 const escpos = require('escpos');
+const { connect } = require('http2');
 escpos.USB = require('escpos-usb'); // npm install escpos escpos-usb
 
 let win;
@@ -47,15 +65,9 @@ function createWindow() {
     },
   });
 
-  const devUrl = 'http://localhost:3000';
+  //loadURL(win)
 
-  waitOn({ resources: [devUrl] }, (err) => {
-    if (err) {
-      console.error('Next.js server did not start:', err);
-      return;
-    }
-    win.loadURL(devUrl);
-  });
+  win.loadURL('http://localhost:3000')
 }
 
 app.whenReady().then(async () => {
@@ -77,7 +89,7 @@ app.whenReady().then(async () => {
       data: {
         name: "SuperAdmin",
         username: "SuperAdmin",
-        password: "P@ss0rd",
+        password: "P@ssw0rd",
         role: "Admin",
         phone: '201111111'
       },
@@ -161,28 +173,25 @@ app.whenReady().then(async () => {
         where: { username },
       });
 
+      console.log('user data: ', user)
+      console.log('password: ', password, "user password: ", user.password)
       if (!user || password !== user.password) {
         return { success: false, error: 'Invalid credentials', user: null };
       }
 
-      const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role },
-        'gdfjoshgjfdhsjkghdfjsh',
-        { expiresIn: '1h' }
-      );
+
 
       // Store user data and token in electron-store
       // Store user data and token
       const authData = {
-        user: { id: user.id, username: user.username, role: user.role },
-        token,
+        user: { id: user.id, username: user.username, role: user.role }
       };
       store.set('auth', authData);
       console.log('Stored auth:', store.get('auth')); // Verify immediately after setting
 
       return {
         success: true,
-        user: { id: user.id, username: user.username, role: user.role, token },
+        user: { id: user.id, username: user.username, role: user.role},
       };
     } catch (error) {
       console.error('Login error:', error);
@@ -193,13 +202,13 @@ app.whenReady().then(async () => {
   ipcMain.handle('getUser', async () => {
     try {
       const authData = store.get('auth');
-      if (!authData || !authData.token) {
+
+      if (!authData) {
         return null;
       }
 
-      const decoded = jwt.verify(authData.token, "gdfjoshgjfdhsjkghdfjsh");
       const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
+        where: { id: authData.user.id },
         select: { id: true, username: true, role: true },
       });
 
@@ -208,7 +217,7 @@ app.whenReady().then(async () => {
         return null;
       }
 
-      return { id: user.id, username: user.username, role: user.role, token: authData.token };
+      return { id: user.id, username: user.username, role: user.role };
     } catch (error) {
       console.error('Get user error:', error);
       store.delete('auth'); // Clear on error (e.g., expired token)
@@ -687,12 +696,12 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('checkout', async (event, body) => {
     try {
-      console.log('body: ', body)
-      body.items.forEach((item) => {
-        console.log('items: ', item)
-      });
+
+      const isCheckout = body.items.some(item => item.is_checkout === false) ? false : body.is_checkout;
 
       if (body && body.id && body.id != '') {
+
+
         body.items.forEach(async (item) => {
           if (item.id) {
             await prisma.orderItems.update({
@@ -720,7 +729,6 @@ app.whenReady().then(async () => {
           }
         })
 
-        const isCheckout = body.items.some(item => item.is_checkout === false) ? false : body.is_checkout;
         await prisma.order.update({
           where: {
             id: body.id
@@ -735,7 +743,7 @@ app.whenReady().then(async () => {
             },
             payment_method: body.payment_method,
             status: body.status,
-            is_checkout: body.items.some(item => item.is_checkout === false) ? false : body.is_checkout,
+            is_checkout: isCheckout,
             table: {
               connect: { id: body.table_id }, // Assuming tableNumber is a string
             }
@@ -746,7 +754,7 @@ app.whenReady().then(async () => {
         await prisma.table.update({
           where: { id: Number(body.table_id) },
           data: {
-            status: body.items.some(item => item.is_checkout === false) ? false : body.is_checkout, // Mark table as available
+            status: isCheckout, // Mark table as available
           }
         });
 
@@ -761,17 +769,26 @@ app.whenReady().then(async () => {
             change: body.change,
             payment_method: body.payment_method,
             status: body.status,
-            is_checkout: body.items.some(item => item.is_checkout === false) ? false : body.is_checkout,
+            is_checkout: isCheckout,
             table: {
               connect: { id: Number(body.table_id) }, // Assuming tableNumber is a string
             },
             orderItems: {
               create: body.items.map(item => ({
-                product_id: item.menuItem.id,
                 quantity: item.quantity,
                 is_checkout: body.is_checkout ? item.is_checkout : false,
                 price: item.menuItem.price,
                 menu_name: item.menuItem.name,
+                products: {
+                  connect: {
+                    id: item.menuItem.id,
+                  }
+                },
+                users: {
+                  connect: {
+                    id: body.users.id
+                  }
+                }
               })),
             },
           }
@@ -822,12 +839,13 @@ app.whenReady().then(async () => {
       await prisma.table.update({
         where: { id: Number(body.table_id) },
         data: {
-          status: body.is_checkout ? item.is_checkout : false, // Mark table as occupied 
+          status: isCheckout, // Mark table as occupied 
         }
       })
       return true;
 
     } catch (error) {
+      console.log('error: ', error)
       return false
     }
   })

@@ -14,7 +14,7 @@ export const TableGrid: React.FC<TableGridProps> = ({ tables }) => {
   const router = useRouter();
 
   const goToProduct = (id: number) => {
-    router.push(`/sales/menues/${id}`); // Keep original URL structure
+    router.push(`/sales/menues?id=${id}`); // Keep original URL structure
   };
 
   const goToTableManagement = () => {

@@ -19,8 +19,10 @@ export default function LoginPage() {
     fetchUser().then(() => {
       if (!useAuthStore.getState().user) {
         router.push('/');
+      } else {
+        router.push('/sales/tables');
       }
-      router.push('/sales/tables');
+
     });
   }, [])
   const handleLogin = async (e: React.FormEvent) => {
@@ -30,8 +32,10 @@ export default function LoginPage() {
       fetchUser().then(() => {
         if (!useAuthStore.getState().user) {
           router.push('/');
+        } else {
+          router.push('/sales/tables');
         }
-        router.push('/sales/tables');
+
       });
 
     } catch (error) {

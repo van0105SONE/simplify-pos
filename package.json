@@ -26,7 +26,11 @@
       "**/*",
       ".next/**/*",
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "prisma/**/*",
+      "out/**/*",
+      "!node_modules/.cache",
+      "!**/*.map"
     ],
     "win": {
       "target": "nsis",
@@ -60,6 +64,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "electron-serve": "^2.1.1",
     "electron-store": "^10.1.0",
     "escpos": "^3.0.0-alpha.6",
     "escpos-usb": "^3.0.0-alpha.4",

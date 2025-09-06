@@ -2,7 +2,7 @@ import { ClipboardList, ShoppingCart } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { CartItem } from "@/types/pos";
-import { ViewMode } from "@/app/sales/menues/[id]/page";
+import { ViewMode } from "@/app/sales/menues/page";
 import { SidebarTrigger } from "./ui/sidebar";
 
 export interface SellHeaderProps {

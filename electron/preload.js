@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  printToBill: (html) => ipcRenderer.invoke('print-receipt', html),
   printToPDF: (html) => ipcRenderer.invoke('print-to-pdf', html),
   logIn: (body) => ipcRenderer.invoke('log-in', body),
   getUser: () => ipcRenderer.invoke('getUser'),

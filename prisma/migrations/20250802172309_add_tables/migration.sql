@@ -1,0 +1,7 @@
+-- CreateTable
+CREATE TABLE "Table" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL,
+    "seat" INTEGER NOT NULL,
+    "status" BOOLEAN NOT NULL
+);

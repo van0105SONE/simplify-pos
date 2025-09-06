@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String       @id @default(uuid())
+  name       String
+  username   String       @unique
+  password   String
+  phone      String?
+  role       String       @default("Admin")
+  createdAt  DateTime     @default(now())
+  unitType   unitType[]
+  OrderItems OrderItems[]
+  Table      Table[]
+  Menues     Menues[]
+  Supplier   Supplier[]
+  Category   Category[]
+}
+
+model Category {
+  id         String   @id @default(uuid())
+  name       String
+  Menues     Menues[]
+  created_by String
+  users      User     @relation(fields: [created_by], references: [id])
+}
+
+model Supplier {
+  id           String   @id @default(uuid())
+  name         String
+  stock        BigInt
+  import_price BigInt
+  createdAt    DateTime @default(now())
+  status       String   @default("out")
+  created_by   String
+  users        User     @relation(fields: [created_by], references: [id])
+}
+
+model Menues {
+  id          String       @id @default(uuid())
+  name        String
+  price       Float
+  description String
+  image       String
+  category_id String
+  stock       Int          @default(0)
+  unitType    String
+  createdAt   DateTime     @default(now())
+  available   Boolean      @default(true)
+  category    Category     @relation(fields: [category_id], references: [id])
+  OrderItems  OrderItems[]
+  created_by  String
+  users       User         @relation(fields: [created_by], references: [id])
+}
+
+model Order {
+  id             String       @id @default(uuid())
+  serial         String       @default("")
+  total          Float
+  tax            Float
+  subtotal       Float
+  change         Float        @default(0)
+  cash_recieve   Float        @default(0)
+  payment_method String       @default("cash")
+  status         String       @default("completed")
+  createdAt      DateTime     @default(now())
+  table_id       Int
+  is_checkout    Boolean      @default(false)
+  table          Table        @relation(fields: [table_id], references: [id])
+  orderItems     OrderItems[]
+}
+
+model Table {
+  id         Int     @id @default(autoincrement())
+  name       String
+  seat       Int
+  status     Boolean
+  Order      Order[]
+  created_by String
+  users      User    @relation(fields: [created_by], references: [id])
+}
+
+model OrderItems {
+  id          Int     @id @default(autoincrement())
+  product_id  String
+  menu_name   String
+  quantity    Int
+  order_id    String?
+  price       Float
+  is_checkout Boolean @default(false)
+  products    Menues  @relation(fields: [product_id], references: [id])
+  order       Order?  @relation(fields: [order_id], references: [id])
+  created_by  String
+  users       User    @relation(fields: [created_by], references: [id])
+}
+
+model Currency {
+  id            Int     @id @default(autoincrement())
+  code          String  @unique
+  symbol        String
+  currency_name String
+  is_main       Boolean
+}
+
+model unitType {
+  id         String   @id @default(uuid())
+  name       String
+  createdAt  DateTime @default(now())
+  created_by String
+  users      User     @relation(fields: [created_by], references: [id])
+}
+
+model saleReport {
+  id            Int      @id @default(autoincrement())
+  total_revenue BigInt
+  total_cost    BigInt
+  total_bill    Int
+  total_product Int
+  day           Int
+  month         Int
+  year          Int
+  created_at    DateTime @default(now())
+}
+
+model setting {
+  id                      Int     @id @default(autoincrement())
+  currency                String
+  currencySymbol          String
+  currencyPosition        String
+  decimalPlaces           Int
+  thousandSeparator       String
+  decimalSeparator        String
+  autoUpdateRates         Boolean
+  exchangeRateApiKey      String
+  taxRate                 Float
+  taxName                 String
+  taxInclusive            Boolean
+  showTaxSeparately       Boolean
+  taxNumber               String
+  showTaxNumberOnReceipts Boolean
+}
